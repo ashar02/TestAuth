@@ -34,7 +34,7 @@ const userSchema = new Schema({
 });
 
 // Hash the password before saving
-userSchema.pre('save', async (next) => {
+userSchema.pre('save', async function(next) {
   // eslint-disable-next-line no-invalid-this
   const user = this;
   if (user.isModified('password') || user.isNew) {
@@ -52,7 +52,7 @@ userSchema.pre('save', async (next) => {
 });
 
 // Method to check if the provided password is valid
-userSchema.methods.isValidPassword = async (password) => {
+userSchema.methods.isValidPassword = async function(password) {
   // eslint-disable-next-line no-invalid-this
   const user = this;
   try {

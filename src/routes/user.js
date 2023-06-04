@@ -6,7 +6,7 @@ const {
   deleteUser,
   getAllUsers
 } = require('../controllers/user');
-const checkRole = require('../middleware/check-role');
+const {checkRole} = require('../middleware/check-role');
 
 // eslint-disable-next-line new-cap
 const router = express.Router();

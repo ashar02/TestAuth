@@ -1,13 +1,17 @@
 const logger = require('../utils/logger');
-const {StatusCodes} = require('../utils/response');
+const {
+  StatusCodes,
+  HttpCodes,
+  sendErrorResponse,
+} = require('../utils/response');
 
 const checkRole = (role) => {
   return (req, res, next) => {
     if (req.user && req.user.role === role) {
       next();
     } else {
-      res.status(403).json({statusMessage: 'Access denied',
-        statusCode: StatusCodes.ERROR_AUTHORIZATION});
+      return sendErrorResponse(next, HttpCodes.FORBIDDEN,
+          StatusCodes.ERROR_FORBIDDEN_ROLE);
     }
   };
 };

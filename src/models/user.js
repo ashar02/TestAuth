@@ -23,6 +23,9 @@ const userSchema = new Schema({
     required: true,
     enum: ['SuperAdmin', 'CompanyAdmin', 'CompanyEmployee'],
   },
+  refreshToken: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -47,6 +50,7 @@ userSchema.pre('save', async function(next) {
       return next(error);
     }
   } else {
+    user.updatedAt = Date.now();
     return next();
   }
 });

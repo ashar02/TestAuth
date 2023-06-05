@@ -6,13 +6,18 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const logger = require('./utils/logger');
-const createError = require('http-errors');
-const {StatusCodes} = require('./utils/response');
+const {
+  StatusCodes,
+  HttpCodes,
+  sendErrorResponse,
+} = require('./utils/response');
 const {errorHandler} = require('./middleware/error-handler');
 const {env} = require('./config');
 const routes = require('./routes');
 const path = require('path');
 const passport = require('./middleware/auth');
+// const generateJwtSecret = require('./utils/secret');
+// console.log(generateJwtSecret());
 
 const httpsApp = express();
 
@@ -53,9 +58,8 @@ httpsApp.use('/api', routes);
 
 // Catch 404
 httpsApp.use(function(req, res, next) {
-  const error = createError(404);
-  error.statusCode = StatusCodes.ERROR_NOT_FOUND;
-  next(error);
+  return sendErrorResponse(next, HttpCodes.NOT_FOUND,
+      StatusCodes.ERROR_NOT_FOUND);
 });
 
 httpsApp.use(errorHandler);

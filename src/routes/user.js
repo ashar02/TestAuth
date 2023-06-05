@@ -12,20 +12,20 @@ const {checkRole} = require('../middleware/check-role');
 const router = express.Router();
 
 // Get user by ID
-router.get('/:userId', passport.authenticate('jwt', {session: false}),
+router.get('/:userId', passport.authenticate('jwt-access', {session: false}),
     checkRole('SuperAdmin'),
     getUserById);
 
 // Update user by ID
-router.put('/:userId', passport.authenticate('jwt', {session: false}),
+router.put('/:userId', passport.authenticate('jwt-access', {session: false}),
     updateUser);
 
 // Delete user by ID
-router.delete('/:userId', passport.authenticate('jwt', {session: false}),
+router.delete('/:userId', passport.authenticate('jwt-access', {session: false}),
     deleteUser);
 
 // Get all users
-router.get('/', passport.authenticate('jwt', {session: false}),
+router.get('/', passport.authenticate('jwt-access', {session: false}),
     getAllUsers);
 
 module.exports = router;

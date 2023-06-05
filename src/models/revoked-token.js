@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const {Schema} = mongoose;
 
 const revokedTokenSchema = new Schema({
-  token: {
+  accessToken: {
     type: String,
     required: true,
   },

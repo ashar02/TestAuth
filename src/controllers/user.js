@@ -1,4 +1,9 @@
 const User = require('../models/user');
+const {
+  StatusCodes,
+  HttpCodes,
+  sendErrorResponse,
+} = require('../utils/response');
 
 const getUserById = async (req, res, next) => {
   const {userId} = req.params;

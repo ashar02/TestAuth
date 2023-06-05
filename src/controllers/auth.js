@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const {env} = require('../config');
-const createError = require('http-errors');
 const User = require('../models/user');
 const RevokedToken = require('../models/revoked-token');
 const Joi = require('joi');
@@ -10,7 +9,12 @@ const {
   passwordSchema,
   roleSchema,
 } = require('../utils/validate');
-const {StatusCodes} = require('../utils/response');
+const {
+  StatusCodes,
+  HttpCodes,
+  sendSuccessResponse,
+  sendErrorResponse,
+} = require('../utils/response');
 
 const registerUser = async (req, res, next) => {
   const schema = Joi.object({
@@ -21,24 +25,27 @@ const registerUser = async (req, res, next) => {
   });
   const {error} = schema.validate(req.body);
   if (error) {
-    error.status = 200;
-    error.statusCode = StatusCodes.ERROR_VALIDATION;
-    return next(error);
+    return sendErrorResponse(next, HttpCodes.UNPROCESSABLE,
+        StatusCodes.ERROR_VALIDATION, error.message, error.stack);
   }
   const {name, email, password, role} = req.body;
   try {
     const user = new User({name, email, password, role});
     await user.save();
-    const token = generateToken(user);
-    res.status(200).json({statusMessage: 'User registered successfully',
-      statusCode: StatusCodes.SUCCESS, user: {token, userId: user._id}});
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    user.refreshToken = refreshToken;
+    await user.save();
+    const body = {accessToken, refreshToken, userId: user._id};
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+        'user', body);
   } catch (error) {
     if (error.code === 11000) {
-      error.message = 'Email already taken';
+      return sendErrorResponse(next, HttpCodes.CONFLICT,
+          StatusCodes.ERROR_ALREADY_TAKEN, null, error.stack);
     }
-    error.status = 200;
-    error.statusCode = StatusCodes.ERROR_DATABASE;
-    return next(error);
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
   }
 };
 
@@ -49,9 +56,8 @@ const loginUser = async (req, res, next) => {
   });
   const {error} = schema.validate(req.body);
   if (error) {
-    error.status = 200;
-    error.statusCode = StatusCodes.ERROR_VALIDATION;
-    return next(error);
+    return sendErrorResponse(next, HttpCodes.UNPROCESSABLE,
+        StatusCodes.ERROR_VALIDATION, error.message, error.stack);
   }
   const {email, password} = req.body;
   try {
@@ -59,61 +65,72 @@ const loginUser = async (req, res, next) => {
     if (user) {
       const isValid = await user.isValidPassword(password);
       if (!isValid) {
-        const error = createError(200);
-        error.statusCode = StatusCodes.ERROR_AUTHENTICATION;
-        error.message = 'Either email or password is not correct';
-        return next(error);
+        return sendErrorResponse(next, HttpCodes.UNAUTHORIZED,
+            StatusCodes.ERROR_EMAIL_PASSWORD);
       }
     } else {
-      const error = createError(200);
-      error.statusCode = StatusCodes.ERROR_AUTHENTICATION;
-      error.message = 'Either email or password is not correct';
-      return next(error);
+      return sendErrorResponse(next, HttpCodes.UNAUTHORIZED,
+          StatusCodes.ERROR_EMAIL_PASSWORD);
     }
-    const token = generateToken(user);
-    res.status(200).json({statusMessage: 'User signed in successfully',
-      statusCode: StatusCodes.SUCCESS, user: {token, userId: user._id}});
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+    user.refreshToken = refreshToken;
+    await user.save();
+    const body = {accessToken, refreshToken, userId: user._id};
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+        'user', body);
   } catch (error) {
-    error.status = 200;
-    error.statusCode = StatusCodes.ERROR_DATABASE;
-    return next(error);
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
+  }
+};
+
+const refreshToken = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const accessToken = generateAccessToken(user);
+    const body = {accessToken, userId: user._id};
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+        'user', body);
+  } catch (error) {
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
   }
 };
 
 const logoutUser = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    let token;
-    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
-      token = authHeader.substring(7);
-    } else if (authHeader) {
-      token = authHeader;
-    }
-    if (token) {
-      await RevokedToken.create({token});
-    }
-    res.status(200).json({statusMessage: 'User logout successful',
-      statusCode: StatusCodes.SUCCESS});
+    const accessToken = req.accessToken;
+    await RevokedToken.create({accessToken});
+    await User.findOneAndUpdate({_id: req.user.id}, {refreshToken: null});
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS);
   } catch (error) {
-    error.status = 200;
-    error.statusCode = StatusCodes.ERROR_DATABASE;
-    return next(error);
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
   }
 };
 
-const generateToken = (user) => {
+const generateAccessToken = (user) => {
   const payload = {
     sub: user._id,
     email: user.email,
     role: user.role,
     iat: Math.floor(Date.now() / 1000), // Generation time in UTC
-    exp: Math.floor(Date.now() / 1000) + (2 * 60 * 60), // Expiry in 2H (UTC)
-    role: user.role,
+    exp: Math.floor(Date.now() / 1000) + (60 * 60), // Expiry 60 minutes (UTC)
   };
-  return jwt.sign(payload, env.JWT_SECRET);
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET);
 };
 
-module.exports = {registerUser, loginUser, logoutUser};
+const generateRefreshToken = (user) => {
+  const payload = {
+    sub: user._id,
+    email: user.email,
+    role: user.role,
+  };
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET);
+};
+
+module.exports = {registerUser, loginUser, refreshToken, logoutUser};
 
 // if (req.version === 'v1') {
 // } else if (req.version === 'v2') {

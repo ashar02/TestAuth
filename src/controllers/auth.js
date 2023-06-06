@@ -117,6 +117,8 @@ const generateAccessToken = (user) => {
     role: user.role,
     iat: Math.floor(Date.now() / 1000), // Generation time in UTC
     exp: Math.floor(Date.now() / 1000) + (60 * 60), // Expiry 60 minutes (UTC)
+    iss: env.JWT_ISSUER,
+    aud: env.JWT_AUDIENCE,
   };
   return jwt.sign(payload, env.JWT_ACCESS_SECRET);
 };
@@ -126,6 +128,8 @@ const generateRefreshToken = (user) => {
     sub: user._id,
     email: user.email,
     role: user.role,
+    iss: env.JWT_ISSUER,
+    aud: env.JWT_AUDIENCE,
   };
   return jwt.sign(payload, env.JWT_REFRESH_SECRET);
 };

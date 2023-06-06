@@ -4,7 +4,7 @@ const {
   getUserById,
   updateUser,
   deleteUser,
-  getAllUsers
+  getAllUsers,
 } = require('../controllers/user');
 const {checkRole} = require('../middleware/check-role');
 

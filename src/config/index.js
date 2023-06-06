@@ -10,6 +10,8 @@ module.exports = {
     DB_URI: process.env.DB_URI,
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
     JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+    JWT_ISSUER: process.env.JWT_ISSUER,
+    JWT_AUDIENCE: process.env.JWT_AUDIENCE,
     SSL_KEY_PATH: process.env.SSL_KEY_PATH,
     SSL_CERT_PATH: process.env.SSL_CERT_PATH,
   },

@@ -59,6 +59,16 @@ const jwtAccessStrategy = new JwtStrategy(jwtAccessOptions,
               StatusCodes.ERROR_EXPIRED_ACCESS_TOKEN);
           return done(error, false);
         }
+        if (payload.iss !== env.JWT_ISSUER) {
+          const error = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
+              StatusCodes.ERROR_INVALID_ISSUER);
+          return done(error, false);
+        }
+        if (payload.aud !== env.JWT_AUDIENCE) {
+          const error = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
+              StatusCodes.ERROR_INVALID_AUDIENCE);
+          return done(error, false);
+        }
         return done(null, user);
       } catch (error) {
         const customError = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
@@ -121,6 +131,16 @@ const jwtRefreshStrategy = new JwtStrategy(jwtRefreshOptions,
         if (req.refreshToken !== user.refreshToken) {
           const error = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
               StatusCodes.ERROR_REVOKED_REFRESH_TOKEN);
+          return done(error, false);
+        }
+        if (payload.iss !== env.JWT_ISSUER) {
+          const error = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
+              StatusCodes.ERROR_INVALID_ISSUER);
+          return done(error, false);
+        }
+        if (payload.aud !== env.JWT_AUDIENCE) {
+          const error = sendErrorResponse(null, HttpCodes.UNAUTHORIZED,
+              StatusCodes.ERROR_INVALID_AUDIENCE);
           return done(error, false);
         }
         return done(null, user);

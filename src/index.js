@@ -1,3 +1,16 @@
+// const cluster = require('cluster');
+// const numCPUs = require('os').cpus().length;
+
+// if (cluster.isMaster) {
+//  for (let i = 0; i < numCPUs; i++) {
+//    cluster.fork();
+//  }
+//  cluster.on('exit', (worker, code, signal) => {
+//    console.log(`Worker ${worker.process.pid} died`);
+//    // Restart the worker if it crashes
+//    cluster.fork();
+//  });
+// } else {
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
@@ -82,7 +95,7 @@ if (env.HTTPS_PORT !== env.HTTP_PORT) {
     } else {
       const host = req.headers.host.split(':')[0];
       const redirectUrl = 'https://' + host + (env.HTTPS_PORT === '443' ? '' : ':' + env.HTTPS_PORT) + req.url;
-      res.redirect(307, redirectUrl);
+      res.redirect(HttpCodes.TEMPORARY_REDIRECT, redirectUrl);
     }
   });
 
@@ -91,3 +104,4 @@ if (env.HTTPS_PORT !== env.HTTP_PORT) {
     logger.info(`Server started at http://localhost:${env.HTTP_PORT}`);
   });
 }
+// }

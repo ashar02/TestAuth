@@ -17,6 +17,7 @@ const StatusCodes = {
   ERROR_EMAIL_PASSWORD: -13,
   ERROR_INVALID_ISSUER: -14,
   ERROR_INVALID_AUDIENCE: -15,
+  ERROR_INVALID_USER: -16,
 };
 
 const HttpCodes = {
@@ -51,6 +52,7 @@ const StatusMessages = {
   [StatusCodes.ERROR_EMAIL_PASSWORD]: 'Either email or password is not correct',
   [StatusCodes.ERROR_INVALID_ISSUER]: 'Token invalid issuer',
   [StatusCodes.ERROR_INVALID_AUDIENCE]: 'Token invalid audience',
+  [StatusCodes.ERROR_INVALID_USER]: 'User not found',
 };
 
 const sendSuccessResponse = (res, httpCode, statusCode, dataName, data) => {
@@ -67,13 +69,13 @@ const sendSuccessResponse = (res, httpCode, statusCode, dataName, data) => {
 const sendErrorResponse = (next, httpCode, statusCode,
     customMessage, customStack) => {
   const error = createError(httpCode);
-  error.statusCode = StatusCodes.ERROR_NOT_FOUND;
+  error.statusCode = statusCode;
   error.message = StatusMessages[statusCode];
   if (customMessage) {
     error.message = customMessage;
   }
   if (customStack) {
-    error.message = customStack;
+    error.stack = customStack;
   }
   if (next) {
     next(error);

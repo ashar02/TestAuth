@@ -26,6 +26,7 @@ router.delete('/:userId', passport.authenticate('jwt-access', {session: false}),
 
 // Get all users
 router.get('/', passport.authenticate('jwt-access', {session: false}),
+    checkRole('SuperAdmin'),
     getAllUsers);
 
 module.exports = router;

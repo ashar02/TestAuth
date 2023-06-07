@@ -2,19 +2,39 @@ const User = require('../models/user');
 const {
   StatusCodes,
   HttpCodes,
+  sendSuccessResponse,
   sendErrorResponse,
 } = require('../utils/response');
+const Joi = require('joi');
+const {
+  userIdSchema,
+  paginationSchema,
+} = require('../utils/validate');
 
 const getUserById = async (req, res, next) => {
+  const schema = Joi.object({
+    userId: userIdSchema,
+  });
+  const {error} = schema.validate(req.params);
+  if (error) {
+    return sendErrorResponse(next, HttpCodes.UNPROCESSABLE,
+        StatusCodes.ERROR_VALIDATION, error.message, error.stack);
+  }
   const {userId} = req.params;
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(userId)
+        .select('-refreshToken -password -__v'); // .lean();
     if (!user) {
-      return res.status(404).json({message: 'User not found'});
+      return sendErrorResponse(next, HttpCodes.NOT_FOUND,
+          StatusCodes.ERROR_INVALID_USER);
     }
-    res.json(user);
-  } catch (err) {
-    next(err);
+    // user.userId = user._id;
+    // delete user._id;
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+        'user', user);
+  } catch (error) {
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
   }
 };
 
@@ -53,12 +73,42 @@ const deleteUser = async (req, res, next) => {
 };
 
 const getAllUsers = async (req, res, next) => {
+  const {error} = paginationSchema.validate(req.query);
+  if (error) {
+    return sendErrorResponse(next, HttpCodes.UNPROCESSABLE,
+        StatusCodes.ERROR_VALIDATION, error.message, error.stack);
+  }
   try {
-    const users = await User.find({});
-    res.status(200).json(users);
-  } catch (err) {
-    next(err);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const totalUsers = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+    const skip = (page - 1) * limit;
+    if (skip >= totalUsers) {
+      return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+          'data', {
+            users: [],
+            totalPages,
+            currentPage: page,
+            totalUsers,
+          });
+    }
+    const users = await User.find()
+        .select('-refreshToken -password -__v')
+        .skip(skip)
+        .limit(limit);
+    return sendSuccessResponse(res, HttpCodes.OK, StatusCodes.SUCCESS,
+        'data', {
+          users,
+          totalPages,
+          currentPage: page,
+          totalUsers,
+        });
+  } catch (error) {
+    return sendErrorResponse(next, HttpCodes.INTERNAL_ERROR,
+        StatusCodes.ERROR_EXCEPTION, error.message, error.stack);
   }
 };
+
 
 module.exports = {getUserById, updateUser, deleteUser, getAllUsers};
